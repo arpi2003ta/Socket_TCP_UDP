@@ -1,0 +1,225 @@
+ConcurrentServer.java--
+
+import java.io.*; 
+import java.net.*; 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+class ConcurrentServer {
+    public static void main(String[] args) throws IOException {
+        
+        ServerSocket skt = new ServerSocket(6789);
+        System.out.println("Server running on port 6789 " );
+
+        while (true) {
+            // Accept new client connection
+            Socket clientSocket = skt.accept();
+            System.out.println("New client connected from port: " + clientSocket.getPort());
+
+            // Handle client in a new thread
+            ClientHandler clientHandler = new ClientHandler(clientSocket);
+            new Thread(clientHandler).start();
+        }
+    }
+}
+
+class ClientHandler implements Runnable {
+    private Socket clientSocket;
+
+    public ClientHandler(Socket socket) {
+        this.clientSocket = socket;
+    }
+
+    @Override
+    public void run() {
+        try {
+            // Get output stream to send data to client
+            DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
+
+            // Get current system time
+            String timeStamp = new SimpleDateFormat("HH:mm:ss").format(new Date());
+
+            // Send system time to client
+            outToClient.writeBytes("Current Server Time: " + timeStamp + "\n");
+
+            // Close client connection
+            clientSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+ConcurrentClient.java--
+
+import java.io.*; 
+import java.net.*;  
+
+class ConcurrentClient {
+    public static void main(String argv[]) throws Exception {
+        
+        
+        Socket clientSocket = new Socket("localhost", 6789);
+        System.out.println("Connected to server on port 6789 " );
+
+        // Read data from server
+        BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        String serverResponse = inFromServer.readLine();
+        System.out.println("Server says: " + serverResponse);
+
+        // Close connection
+        clientSocket.close();
+    }
+}
+
+OUTPUT
+SERVER
+
+
+run:
+Server running on port 6789 
+New client connected from port: 63527
+
+CLIENT
+
+run:
+Connected to server on port 6789 
+Server says: Current Server Time: 16:43:09
+BUILD SUCCESSFUL (total time: 0 seconds)
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+MultiThreadedServer.java--
+
+import java.io.*; 
+import java.net.*; 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+class MultiThreadedServer {
+    public static void main(String[] args) throws IOException {
+        
+        ServerSocket skt = new ServerSocket(6789);
+        System.out.println("Server running on port 6789" );
+
+        while (true) {
+            // Accept new client connection
+            Socket clientSocket = skt.accept();
+            System.out.println("New client connected from port: " + clientSocket.getPort());
+
+            // Create separate threads for reading and writing
+            Thread readThread = new Thread(new ReadHandler(clientSocket));
+            Thread writeThread = new Thread(new WriteHandler(clientSocket));
+
+            // Start both threads
+            readThread.start();
+            writeThread.start();
+        }
+    }
+}
+
+// Thread for reading data from the client
+class ReadHandler implements Runnable {
+    private Socket clientSocket;
+
+    public ReadHandler(Socket socket) {
+        this.clientSocket = socket;
+    }
+
+    @Override
+    public void run() {
+        try {
+            BufferedReader inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String clientMessage;
+
+            while ((clientMessage = inFromClient.readLine()) != null) {
+                System.out.println("Client says: " + clientMessage);
+            }
+
+            clientSocket.close();
+        } catch (IOException e) {
+            System.out.println("Client disconnected.");
+        }
+    }
+}
+
+// Thread for writing data to the client (sends system time once)
+class WriteHandler implements Runnable {
+    private Socket clientSocket;
+
+    public WriteHandler(Socket socket) {
+        this.clientSocket = socket;
+    }
+
+    @Override
+    public void run() {
+        try {
+            DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
+
+            // Send current system time once
+            String timeStamp = new SimpleDateFormat("HH:mm:ss").format(new Date());
+            outToClient.writeBytes("Server Time: " + timeStamp + "\n");
+
+            // Close output stream after sending time once
+            outToClient.flush();
+        } catch (IOException e) {
+            System.out.println("Client disconnected.");
+        }
+    }
+}
+
+MultiThreadedClient.java--
+
+import java.io.*; 
+import java.net.*;  
+import java.util.Scanner;
+
+class MultiThreadedClient {
+    public static void main(String argv[]) throws Exception {
+        String serverIP = "localhost";  // Change to server IP if needed
+        int serverPort = 6789;
+        
+        Socket clientSocket = new Socket(serverIP, serverPort);
+        System.out.println("Connected to server on port " + serverPort);
+
+        // Read system time from server
+        BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        String serverResponse = inFromServer.readLine();
+        System.out.println("Server: " + serverResponse);
+
+        // Send one message to the server
+        DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
+        Scanner scanner = new Scanner(System.in);
+        
+        System.out.print("Enter message for server: ");
+        String message = scanner.nextLine();
+        outToServer.writeBytes(message + "\n");
+
+        // Close all resources after sending one message
+        scanner.close();
+        outToServer.close();
+        inFromServer.close();
+        clientSocket.close();
+        
+        System.out.println("Disconnected from server.");
+    }
+}
+
+OUTPUT
+SERVER
+
+run:
+Server running on port 6789
+New client connected from port: 60722
+Client says: aa
+New client connected from port: 60723
+Client says: ad
+
+
+CLIENT
+
+run:
+Connected to server on port 6789
+Server: Server Time: 16:53:55
+Enter message for server: ad
+Disconnected from server.
+BUILD SUCCESSFUL (total time: 5 seconds)

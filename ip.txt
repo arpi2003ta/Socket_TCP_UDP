@@ -1,0 +1,45 @@
+import java.util.Scanner;
+
+public class NetworkAddressCalculator {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        // Get user input
+        System.out.print("Enter IP address : ");
+        String ipAddress = scanner.nextLine();
+        System.out.print("Enter prefix length : ");
+        int prefixLength = scanner.nextInt();
+        scanner.close();
+
+        // Compute Network Address and Total Hosts
+        String networkAddress = calculateNetworkAddress(ipAddress, prefixLength);
+        int totalHosts = (int) Math.pow(2, 32 - prefixLength) - 2; // -2 for Network & Broadcast
+
+        // Display results
+        System.out.println("Network Address: " + networkAddress);
+        System.out.println("Total Number of Hosts: " + totalHosts);
+    }
+
+    public static String calculateNetworkAddress(String ip, int prefix) {
+        String[] octets = ip.split("\\.");
+        int ipInt = (Integer.parseInt(octets[0]) << 24) |
+                    (Integer.parseInt(octets[1]) << 16) |
+                    (Integer.parseInt(octets[2]) << 8)  |
+                    (Integer.parseInt(octets[3]));
+
+        int subnetMask = 0xFFFFFFFF << (32 - prefix); // Create subnet mask
+        int network = ipInt & subnetMask; // Network address calculation
+
+        return ((network >> 24) & 0xFF) + "." +
+               ((network >> 16) & 0xFF) + "." +
+               ((network >> 8) & 0xFF) + "." +
+               (network & 0xFF);
+    }
+}
+
+OUTPUT---
+Enter IP address : 192.168.1.10
+Enter prefix length : 24
+Network Address: 192.168.1.0
+Total Number of Hosts: 254
+BUILD SUCCESSFUL (total time: 33 seconds)

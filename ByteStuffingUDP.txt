@@ -1,0 +1,108 @@
+ByteStuffingServerUDP.java--
+
+import java.io.*;
+import java.net.*;
+
+class ByteStuffingServerUDP {
+    public static void main(String argv[]) throws Exception {
+        while (true){
+            DatagramSocket serverSocket = new DatagramSocket(6789);
+            System.out.println("UDP Math Server is running on port 6789...");
+
+
+            byte[] receiveBuffer = new byte[1024]; // Clear buffer
+            DatagramPacket receivePacket = new DatagramPacket(receiveBuffer, receiveBuffer.length);
+            serverSocket.receive(receivePacket);
+            String stuffedData = new String(receivePacket.getData(), 0, receivePacket.getLength());
+            System.out.println("Received Stuffed Data: " + stuffedData);
+
+            // Perform byte unstuffing
+            String unstuffedData = byteUnstuffing(stuffedData);
+            System.out.println("Original Data After Unstuffing: " + unstuffedData);
+
+            
+            serverSocket.close();
+        } 
+    }
+
+    public static String byteUnstuffing(String stuffedData) {
+        StringBuilder result = new StringBuilder();
+        boolean escapeNext = false;
+
+        for (char c : stuffedData.toCharArray()) {
+            if (escapeNext) {
+                result.append(c); // Add the escaped character as it is
+                escapeNext = false;
+            } else if (c == 'E') {
+                escapeNext = true; // Escape detected, next character is stuffed
+            } else {
+                result.append(c); // Normal character
+            }
+        }
+        return result.toString();
+    }
+}
+
+
+ByteStuffingClientUDP.java---
+
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
+
+class ByteStuffingClientUDP {
+    public static void main(String[] args) {
+        try {
+            DatagramSocket clientSocket = new DatagramSocket();
+            InetAddress serverAddress = InetAddress.getByName("localhost");
+
+            Scanner scanner = new Scanner(System.in);
+
+            System.out.print("Enter a sequence of D (Data), E (Escape), F (Flag): ");
+            String inputData = scanner.nextLine();
+
+            // Perform byte stuffing
+            String stuffedData = byteStuffing(inputData);
+            System.out.println("Stuffed Data Sent: " + stuffedData);
+
+            // Send stuffed data
+            byte[] sendBuffer = stuffedData.getBytes();
+            DatagramPacket sendPacket = new DatagramPacket(sendBuffer, sendBuffer.length, serverAddress, 6789);
+            clientSocket.send(sendPacket);
+
+
+            scanner.close();
+            
+            clientSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static String byteStuffing(String data) {
+        StringBuilder stuffed = new StringBuilder();
+
+        for (char c : data.toCharArray()) {
+            if (c == 'F' || c == 'E') {
+                stuffed.append("E"); // Add escape before special characters
+            }
+            stuffed.append(c); // Add actual character
+        }
+
+        return stuffed.toString();
+    }
+}
+
+OUTPUT--
+
+PS C:\Users\Arpita Nath\Desktop\j> javac ByteStuffingServerUDP.java ByteStuffingClientUDP.java
+PS C:\Users\Arpita Nath\Desktop\j> java ByteStuffingServerUDP
+UDP Math Server is running on port 6789...
+Received Stuffed Data: DDEEEFDEFD
+Original Data After Unstuffing: DDEFDFD
+UDP Math Server is running on port 6789...
+
+PS C:\Users\Arpita Nath\Desktop\j> java ByteStuffingClientUDP
+Enter a sequence of D (Data), E (Escape), F (Flag): DDEFDFD
+Stuffed Data Sent: DDEEEFDEFD
+PS C:\Users\Arpita Nath\Desktop\j> 

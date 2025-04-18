@@ -1,0 +1,217 @@
+MathServer.java---
+
+
+import java.io.*; 
+import java.net.*;  
+
+class MathServer { 
+    public static void main(String argv[]) throws Exception { 
+        ServerSocket skt = new ServerSocket(6789); 
+        System.out.println("Server up and running, listening for connections ");
+
+        while (true) { 
+            Socket connectionSocket = skt.accept(); 
+            System.out.println("Client connected ");
+
+            BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream())); 
+            DataOutputStream outToClient = new DataOutputStream(connectionSocket.getOutputStream());
+
+            while (true) {  
+                // Send menu
+                outToClient.writeBytes("Select 1 to add, 2 to subtract, 3 to multiply, 4 to exit.\n");
+                System.out.println("Waiting for client choice...");
+                
+                String choiceStr = inFromClient.readLine();
+                int choice;
+
+                try {
+                    choice = Integer.parseInt(choiceStr);
+                } catch (NumberFormatException e) {
+                    outToClient.writeBytes("Invalid input. Please enter a number.\n");
+                    continue;
+                }
+
+                // Exit condition
+                if (choice == 4) {
+                    System.out.println("Client exited.");
+                    break;
+                }
+
+                // Check if choice is valid
+                if (choice < 1 || choice > 3) {
+                    outToClient.writeBytes("Invalid choice. Try again.\n");
+                    continue;
+                }
+
+                // Ask for operands
+                outToClient.writeBytes("Enter operands (separated by space):\n");
+                System.out.println("Waiting for operands...");
+
+                String operandStr = inFromClient.readLine();
+                String[] operands = operandStr.split(" ");
+
+                if (operands.length < 2) {
+                    outToClient.writeBytes("Error: Enter at least two numbers.\n");
+                    continue;
+                }
+
+                double result;
+                try {
+                    result = Double.parseDouble(operands[0]); // Initialize with first operand
+                    
+                    // Process based on operation
+                    switch (choice) {
+                        case 1: // Addition
+                            for (int i = 1; i < operands.length; i++) {
+                                result += Double.parseDouble(operands[i]);
+                            }
+                            break;
+                        case 2: // Subtraction
+                            for (int i = 1; i < operands.length; i++) {
+                                result -= Double.parseDouble(operands[i]);
+                            }
+                            break;
+                        case 3: // Multiplication
+                            for (int i = 1; i < operands.length; i++) {
+                                result *= Double.parseDouble(operands[i]);
+                            }
+                            break;
+                    }
+                } catch (NumberFormatException e) {
+                    outToClient.writeBytes("Error: Invalid number format.\n");
+                    continue;
+                }
+
+                // Send result to client
+                System.out.println("Computed Result: " + result);
+                outToClient.writeBytes("Result: " + result + "\n");
+            }
+
+            // Close client connection (server keeps running)
+            connectionSocket.close();
+            System.out.println("Client disconnected.\n");
+        }
+    }
+}
+
+
+
+
+
+MathClient.java--
+
+
+import java.io.*; 
+import java.net.*;  
+import java.util.Scanner; 
+
+class MathClient { 
+    public static void main(String argv[]) throws Exception { 
+        Socket clientSocket = new Socket("localhost", 6789); 
+        System.out.println("Client running, connected to server");
+
+        DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream()); 
+        BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream())); 
+        Scanner scanner = new Scanner(System.in);
+
+        while (true) { 
+            // Read menu from server
+            System.out.println("Reading from server...");
+            String menu = inFromServer.readLine();
+            System.out.println(menu);
+
+            // Get user choice
+            System.out.print("Enter choice: ");
+            String choice = scanner.nextLine();
+            System.out.println("Writing to socket...");
+            outToServer.writeBytes(choice + '\n');
+
+            // Exit condition
+            if (choice.equals("4")) {
+                System.out.println("Exiting client...");
+                break;
+            }
+
+            // Read server response for operands
+            System.out.println("Reading from server...");
+            String prompt = inFromServer.readLine();
+            System.out.println(prompt);
+
+            // Get operands
+            //System.out.print("Enter operands (separated by space): ");
+            String operands = scanner.nextLine();
+            System.out.println("Writing to socket...");
+            outToServer.writeBytes(operands + '\n');
+
+            // Read result from server
+            System.out.println("Reading from server...");
+            String result = inFromServer.readLine();
+            System.out.println(result);
+        }
+
+        clientSocket.close();
+        scanner.close();
+    }
+}
+
+
+OUTPUT--
+SERVER--
+
+run:
+Server up and running, listening for connections 
+Client connected 
+Waiting for client choice...
+Waiting for operands...
+Computed Result: 4.0
+Waiting for client choice...
+Waiting for operands...
+Computed Result: 0.0
+Waiting for client choice...
+Waiting for operands...
+Computed Result: 2.0
+Waiting for client choice...
+Client exited.
+Client disconnected.
+
+
+CLIENT--
+
+run:
+Client running, connected to server
+Reading from server...
+Select 1 to add, 2 to subtract, 3 to multiply, 4 to exit.
+Enter choice: 1
+Writing to socket...
+Reading from server...
+Enter operands (separated by space):
+1 2 1
+Writing to socket...
+Reading from server...
+Result: 4.0
+Reading from server...
+Select 1 to add, 2 to subtract, 3 to multiply, 4 to exit.
+Enter choice: 2
+Writing to socket...
+Reading from server...
+Enter operands (separated by space):
+2 1 1
+Writing to socket...
+Reading from server...
+Result: 0.0
+Reading from server...
+Select 1 to add, 2 to subtract, 3 to multiply, 4 to exit.
+Enter choice: 3
+Writing to socket...
+Reading from server...
+Enter operands (separated by space):
+1 1 2
+Writing to socket...
+Reading from server...
+Result: 2.0
+Reading from server...
+Select 1 to add, 2 to subtract, 3 to multiply, 4 to exit.
+Enter choice: 4
+Writing to socket...
+Exiting client...
+BUILD SUCCESSFUL (total time: 47 seconds)

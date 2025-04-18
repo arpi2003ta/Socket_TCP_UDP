@@ -1,0 +1,242 @@
+CountServer.java -----
+
+
+import java.io.*;
+import java.net.*;
+
+public class CountServer {
+    public static void main(String[] args) throws Exception {
+        // Create a server socket listening on port 6789
+        ServerSocket serverSocket = new ServerSocket(6789);
+        System.out.println("Server up and running, waiting for a client connection...");
+
+        // Accept one client connection
+        Socket connectionSocket = serverSocket.accept();
+        System.out.println("Client connected.");
+
+        // Create input and output streams for the connection
+        BufferedReader inFromClient = new BufferedReader(
+                new InputStreamReader(connectionSocket.getInputStream()));
+        DataOutputStream outToClient = new DataOutputStream(connectionSocket.getOutputStream());
+
+        // Communication loop
+        while (true) {
+            System.out.println("Waiting for client input...");
+            String clientSentence = inFromClient.readLine();
+            
+            // If the connection is closed or client sends "No", break out of the loop.
+            if (clientSentence == null || clientSentence.equalsIgnoreCase("No")) {
+                System.out.println("Client requested to end the session.");
+                break;
+            }
+            
+            System.out.println("Received from client: " + clientSentence);
+            
+            // Process the input: count the frequency of alphabets (letters only)
+            // Convert to lowercase so the count is case-insensitive.
+            String lowerCaseSentence = clientSentence.toLowerCase();
+            int[] frequencies = new int[26]; // for letters a to z
+            for (int i = 0; i < lowerCaseSentence.length(); i++) {
+                char ch = lowerCaseSentence.charAt(i);
+                if (ch >= 'a' && ch <= 'z') {
+                    frequencies[ch - 'a']++;
+                }
+            }
+            
+            // Find the letter with the maximum frequency
+            int maxCount = 0;
+            int maxIndex = -1;
+            for (int i = 0; i < 26; i++) {
+                if (frequencies[i] > maxCount) {
+                    maxCount = frequencies[i];
+                    maxIndex = i;
+                }
+            }
+            
+            String result;
+            if (maxCount == 0) {
+                result = "No alphabets found in the input.";
+            } else {
+                char maxLetter = (char) ('a' + maxIndex);
+                result = "Most frequent letter: " + maxLetter + " (Occurrences: " + maxCount + ")";
+            }
+            
+            // Send the result to the client
+            outToClient.writeBytes(result + "\n");
+            System.out.println("Sent result to client: " + result);
+            
+            // Ask the client if they want to send another string
+            String prompt = "Do you want to send another string? If yes, enter a new string; if not, type 'No'";
+            outToClient.writeBytes(prompt + "\n");
+            System.out.println("Sent prompt to client.");
+        }
+        
+        // Clean up resources and close the connection.
+        System.out.println("Closing connection with client.");
+        connectionSocket.close();
+        serverSocket.close();
+    }
+}
+
+
+
+CountClient.java -----
+
+import java.io.*;
+import java.net.*;
+
+public class CountClient {
+    public static void main(String[] args) throws Exception {
+        Socket clientSocket = new Socket("localhost", 6789);
+        System.out.println("Connected to server.");
+
+        DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
+        
+        BufferedReader inFromServer = new BufferedReader(
+                new InputStreamReader(clientSocket.getInputStream()));
+        
+        BufferedReader userInput = new BufferedReader(new InputStreamReader(System.in));
+
+        while (true) {
+            System.out.print("Enter a string (or type 'n' to exit): ");
+            String sentence = userInput.readLine();
+            outToServer.writeBytes(sentence + "\n");
+
+            // If the user types "No", exit the loop (do not wait for a response)
+            if (sentence.equals("n")) {
+                break;
+            }
+            String serverResult = inFromServer.readLine();
+            System.out.println("FROM SERVER: " + serverResult);
+            
+            String serverPrompt = inFromServer.readLine();
+            System.out.println(serverPrompt);
+        }
+        
+        // Close the connection when done.
+        System.out.println("Closing connection with server.");
+        clientSocket.close();
+    }
+}
+
+
+
+
+
+PS C:\Users\Arpita Nath\Desktop\j> javac CountClient.java CountServer.java
+PS C:\Users\Arpita Nath\Desktop\j> java CountServer                       
+Server up and running, waiting for a client connection...
+Client connected.
+Waiting for client input...
+Received from client: arpita
+Sent result to client: Most frequent letter: a (Occurrences: 2)
+Sent prompt to client.
+Waiting for client input...
+Client requested to end the session.
+Closing connection with client.
+PS C:\Users\Arpita Nath\Desktop\j> 
+
+
+
+PS C:\Users\Arpita Nath\Desktop\j> java CountClient 
+Connected to server.
+Enter a string (or type 'n' to exit): arpita
+FROM SERVER: Most frequent letter: a (Occurrences: 2)
+Do you want to send another string? If yes, enter a new string; if not, type 'No'
+Enter a string (or type 'n' to exit): no
+FROM SERVER: null
+null
+Enter a string (or type 'n' to exit): No
+Exception in thread "main" java.net.SocketException: An established connection was aborted by the software in your host machine
+        at java.base/sun.nio.ch.SocketDispatcher.write0(Native Method)
+        at java.base/sun.nio.ch.SocketDispatcher.write(SocketDispatcher.java:54)
+        at java.base/sun.nio.ch.NioSocketImpl.tryWrite(NioSocketImpl.java:394)
+        at java.base/sun.nio.ch.NioSocketImpl.implWrite(NioSocketImpl.java:410)
+        at java.base/sun.nio.ch.NioSocketImpl.write(NioSocketImpl.java:440)
+        at java.base/sun.nio.ch.NioSocketImpl$2.write(NioSocketImpl.java:819)
+        at java.base/java.net.Socket$SocketOutputStream.implWrite(Socket.java:1223)
+        at java.base/java.net.Socket$SocketOutputStream.write(Socket.java:1210)
+        at java.base/java.net.Socket$SocketOutputStream.write(Socket.java:1205)
+        at java.base/java.io.DataOutputStream.writeBytes(DataOutputStream.java:280)
+        at CountClient.main(CountClient.java:19)
+PS C:\Users\Arpita Nath\Desktop\j> 
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+EchoServer.java---
+
+
+import java.io.*; 
+import java.net.*;
+
+class EchoServer
+{
+    public static void main(String argv[]) throws Exception
+    {
+        String clientSentence; String capitalizedSentence;
+        ServerSocket skt= new ServerSocket(6789);
+        System.out.println("Server up and running, listening for connections ");
+        while(true)
+        {
+            Socket connectionSocket = skt.accept();
+            System.out.println("Client connected ");
+            BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
+            DataOutputStream outToClient = new DataOutputStream(connectionSocket.getOutputStream());
+            System.out.println("Reading from socket ");
+            clientSentence = inFromClient.readLine();
+            System.out.println("Received and Sending: " + clientSentence);
+            System.out.println("Writing to socket ");
+            capitalizedSentence = clientSentence.toUpperCase() + '\n';
+            outToClient.writeBytes(capitalizedSentence);
+            System.out.println("Message sent ");
+            connectionSocket.close();
+        }
+    }
+}
+
+
+EchoClient.java---
+
+
+import java.io.*;
+import java.net.*;
+
+class EchoClient
+{
+    public static void main(String argv[]) throws Exception
+    {
+        String sentence;
+        String modifiedSentence;
+        Socket clientSocket = new Socket("localhost", 6789);
+        System.out.println("Client running, connected to server ");
+        DataOutputStream outToServer = new DataOutputStream(clientSocket.getOutputStream());
+        BufferedReader inFromServer = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+        sentence = "Hi from Client";
+        System.out.println("Writing to socket ");
+        outToServer.writeBytes(sentence + '\n');
+        System.out.println("Reading from socket ");
+        modifiedSentence = inFromServer.readLine();
+        System.out.println("FROM SERVER: " + modifiedSentence);
+        clientSocket.close();
+    }
+}
+
+
+
+PS C:\Users\Arpita Nath\Desktop\j> javac EchoServer.java EchoClient.java      
+PS C:\Users\Arpita Nath\Desktop\j> java EchoServer                      
+Server up and running, listening for connections 
+Client connected 
+Reading from socket
+Received and Sending: Hi from Client
+Writing to socket
+Message sent
+
+
+PS C:\Users\Arpita Nath\Desktop\j> java EchoClient   
+Client running, connected to server 
+Writing to socket
+Reading from socket
+FROM SERVER: HI FROM CLIENT
+PS C:\Users\Arpita Nath\Desktop\j> 
+
+

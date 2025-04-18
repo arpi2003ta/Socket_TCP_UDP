@@ -1,0 +1,68 @@
+UDPServer.java--
+
+import java.io.IOException;  
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+
+
+public class UDPServer {
+
+    public static void main(String[] agrs)throws IOException
+    {
+        try
+        {
+            DatagramSocket dsocket=new DatagramSocket(50000);
+            byte[] buffer=new byte[2048];
+            DatagramPacket packet = new DatagramPacket(buffer,buffer.length);
+            while(true){
+            dsocket.receive(packet);
+            byte[] bi=packet.getData();
+            String msg=new String(bi);
+            System.out.println(msg.trim() + " From port: "+ packet.getPort());  
+            InetAddress address=packet.getAddress();          
+            String msg1="Acknowledged";
+            DatagramPacket packet1=new DatagramPacket(msg1.getBytes(),msg1.getBytes().length,address, packet.getPort());
+            dsocket.send(packet1);
+            }        
+        }   catch(Exception e)           { }
+    }      
+}
+
+
+
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+
+public class UDPClient {
+        public static void main(String[] args)
+    {
+        try         {            
+            String s1="USER:"+System.getProperty("user.name")+" OS: "+System.getProperty("os.name");
+            byte[] msg=s1.getBytes();            
+            InetAddress address=InetAddress.getByName("localhost");
+            DatagramPacket packet=new DatagramPacket(msg,msg.length,address,50000);
+            DatagramSocket dsocket=new DatagramSocket();
+            dsocket.send(packet);
+            byte[] buffer=new byte[2048];
+            DatagramPacket packet1=new DatagramPacket(buffer, buffer.length);
+            dsocket.receive(packet1);
+            byte[] b=packet1.getData();          
+            String msg1=new String(b);
+            System.out.println("From Server "+msg1);
+            dsocket.close();            
+                   } catch(Exception e)      {}
+    }
+}
+
+
+PS C:\Users\Arpita Nath\Desktop\j> javac UDPServer.java UDPClient.java                  
+PS C:\Users\Arpita Nath\Desktop\j> java UDPServer                     
+USER:Arpita Nath OS: Windows 11 From port: 51963
+
+
+
+PS C:\Users\Arpita Nath\Desktop\j> java UDPClient                           
+From Server Acknowledged
+PS C:\Users\Arpita Nath\Desktop\j> 

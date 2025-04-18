@@ -1,0 +1,194 @@
+GBNServer.java---
+
+import java.io.*;
+import java.net.*;
+
+public class GBNServer {
+    private static final int PORT = 6789;
+    private static int expectedSeqNum = 0;
+
+    public static void main(String[] args) {
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            System.out.println("Server is running on port " + PORT);
+            Socket clientSocket = serverSocket.accept();
+            System.out.println("Client connected...");
+
+            DataInputStream inFromClient = new DataInputStream(clientSocket.getInputStream());
+            DataOutputStream outToClient = new DataOutputStream(clientSocket.getOutputStream());
+
+            while (true) {
+                try {
+                    int receivedSeq = inFromClient.readInt();
+                    System.out.println("Received Packet: " + receivedSeq);
+
+                    synchronized (GBNServer.class) {  // Ensure thread safety
+                        if (receivedSeq == expectedSeqNum) {
+                            System.out.println("Packet " + receivedSeq + " received correctly.");
+                            expectedSeqNum++;
+                        } else {
+                            System.out.println("Out-of-order packet! Expecting: " + expectedSeqNum);
+                        }
+                        outToClient.writeInt(expectedSeqNum - 1); // Send cumulative ACK
+                    }
+                } catch (EOFException e) {
+                    System.out.println("Client disconnected.");
+                    break;
+                }
+            }
+            clientSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+
+
+GBNClient.java---
+
+import java.io.*;
+import java.net.*;
+import java.util.Timer;
+import java.util.TimerTask;
+
+public class GBNClient {
+    private static final int WINDOW_SIZE = 4;
+    private static final int TIMEOUT = 3000; // 3 seconds
+
+    private static int base = 0, nextSeqNum = 0;
+    private static Socket socket;
+    private static DataOutputStream outToServer;
+    private static DataInputStream inFromServer;
+    private static Timer timer;
+
+    public static void main(String[] args) {
+        try {
+            socket = new Socket("localhost", 6789);
+            System.out.println("Connected to Server!");
+
+            outToServer = new DataOutputStream(socket.getOutputStream());
+            inFromServer = new DataInputStream(socket.getInputStream());
+
+            // Thread to send packets indefinitely
+            Thread senderThread = new Thread(() -> {
+                while (true) {
+                    synchronized (GBNClient.class) {
+                        while (nextSeqNum < base + WINDOW_SIZE) {
+                            sendPacket(nextSeqNum);
+                            nextSeqNum++;
+                        }
+                    }
+                    try {
+                        Thread.sleep(500); // Simulate network delay
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+
+            // Thread to receive ACKs
+            Thread ackReceiverThread = new Thread(() -> {
+                while (true) {
+                    receiveACK();
+                }
+            });
+
+            senderThread.start();
+            ackReceiverThread.start();
+
+            senderThread.join();
+            ackReceiverThread.join();
+
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void sendPacket(int seqNum) {
+        try {
+            System.out.println("Sending packet: " + seqNum);
+            outToServer.writeInt(seqNum);
+            outToServer.flush();
+
+            if (base == seqNum) {
+                startTimer();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void receiveACK() {
+        try {
+            int ackNum = inFromServer.readInt();
+            synchronized (GBNClient.class) {
+                System.out.println("Received ACK: " + ackNum);
+
+                if (ackNum >= base) {
+                    base = ackNum + 1; // Slide window
+                    if (base == nextSeqNum) {
+                        stopTimer();
+                    } else {
+                        startTimer();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Timeout! Retransmitting from " + base);
+            nextSeqNum = base;
+            for (int i = base; i < base + WINDOW_SIZE; i++) {
+                sendPacket(i);
+            }
+        }
+    }
+
+    private static void startTimer() {
+        stopTimer();
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                System.out.println("Timeout! Retransmitting from " + base);
+                nextSeqNum = base;
+                for (int i = base; i < base + WINDOW_SIZE; i++) {
+                    sendPacket(i);
+                }
+            }
+        }, TIMEOUT);
+    }
+
+    private static void stopTimer() {
+        if (timer != null) {
+            timer.cancel();
+            timer.purge();
+        }
+    }
+}
+
+
+OUPUT---
+SERVER---
+
+PS C:\Users\Arpita Nath\Desktop\j> javac GBNServer.java GBNClient.java
+PS C:\Users\Arpita Nath\Desktop\j> java GBNServer
+Server is running on port 6789
+Client connected...
+Received Packet: 0
+Packet 0 received correctly.
+Received Packet: 1
+Packet 1 received correctly.
+Received Packet: 2
+Packet 2 received correctly.
+Received Packet: 3
+Packet 3 received correctly.
+
+CLIENT---
+PS C:\Users\Arpita Nath\Desktop\j> java GBNClient
+Connected to Server!
+Sending packet: 0
+Sending packet: 1
+Sending packet: 2
+Sending packet: 3
+Received ACK: 0
+Received ACK: 1
+Received ACK: 2
+Received ACK: 3

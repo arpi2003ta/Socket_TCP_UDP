@@ -1,0 +1,66 @@
+import java.util.Scanner;
+
+public class NetworkAddressCalculator {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+
+        // Get user input
+        System.out.print("Enter IP address : ");
+        String ipAddress = scanner.nextLine();
+        System.out.print("Enter prefix length : ");
+        int prefixLength = scanner.nextInt();
+        scanner.close();
+
+        // Compute Network Address, Subnet Mask, and Total Hosts
+        String subnetMask = calculateSubnetMask(prefixLength);
+        String networkAddress = calculateNetworkAddress(ipAddress, subnetMask);
+        int totalHosts = (int) Math.pow(2, 32 - prefixLength) - 2; // -2 for Network & Broadcast
+
+        // Display results
+        System.out.println("Network Address: " + networkAddress);
+        System.out.println("Subnet Mask: " + subnetMask);
+        System.out.println("Total Number of Hosts: " + totalHosts);
+    }
+
+    public static String calculateSubnetMask(int prefix) {
+        int mask = 0xFFFFFFFF << (32 - prefix);
+        return ((mask >> 24) & 0xFF) + "." +
+               ((mask >> 16) & 0xFF) + "." +
+               ((mask >> 8) & 0xFF) + "." +
+               (mask & 0xFF);
+    }
+
+    public static String calculateNetworkAddress(String ip, String subnetMask) {
+        String[] ipParts = ip.split("\\.");
+        String[] maskParts = subnetMask.split("\\.");
+
+        int ipInt = (Integer.parseInt(ipParts[0]) << 24) |
+                    (Integer.parseInt(ipParts[1]) << 16) |
+                    (Integer.parseInt(ipParts[2]) << 8) |
+                    Integer.parseInt(ipParts[3]);
+
+        int maskInt = (Integer.parseInt(maskParts[0]) << 24) |
+                      (Integer.parseInt(maskParts[1]) << 16) |
+                      (Integer.parseInt(maskParts[2]) << 8) |
+                      Integer.parseInt(maskParts[3]);
+
+        int networkInt = ipInt & maskInt;
+
+        return ((networkInt >> 24) & 0xFF) + "." +
+               ((networkInt >> 16) & 0xFF) + "." +
+               ((networkInt >> 8) & 0xFF) + "." +
+               (networkInt & 0xFF);
+    }
+}
+
+
+OUTPUT---
+
+PS C:\Users\Arpita Nath\Desktop\j> javac NetworkAddressCalculator.java
+PS C:\Users\Arpita Nath\Desktop\j> java NetworkAddressCalculator      
+Enter IP address : 192.168.1.10
+Enter prefix length : 24
+Network Address: 192.168.1.0
+Subnet Mask: 255.255.255.0
+Total Number of Hosts: 254
+PS C:\Users\Arpita Nath\Desktop\j> 

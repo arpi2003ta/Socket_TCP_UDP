@@ -1,0 +1,192 @@
+import java.io.*;
+import java.net.*;
+
+public class ParityReceiverServer {
+    public static void main(String[] args) throws IOException {
+        int port = 6789;
+        ServerSocket serverSocket = new ServerSocket(port);
+        System.out.println("Server is running on port " + port);
+
+        while (true) {
+            Socket clientSocket = serverSocket.accept();
+            System.out.println("Client connected...");
+
+            BufferedReader inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String receivedData = inFromClient.readLine();
+            
+            if (receivedData == null) continue;
+
+            System.out.println("Received Data with Parity: " + receivedData);
+
+            // Check parity
+            int count = 0;
+            for (char bit : receivedData.toCharArray()) {
+                if (bit == '1') count++;
+            }
+
+            if (count % 2 == 0) {
+                System.out.println(" Data is UNCORRUPTED");
+            } else {
+                System.out.println(" Data is CORRUPTED");
+            }
+
+            // Close client socket
+            clientSocket.close();
+        }
+    }
+}
+
+
+
+
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
+
+public class ParitySenderClient {
+    public static void main(String[] args) throws IOException {
+        String serverIP = "localhost"; 
+        int serverPort = 6789;
+
+        Socket socket = new Socket(serverIP, serverPort);
+        System.out.println("Connected to server on port " + serverPort);
+
+        DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Enter binary data: ");
+        String data = scanner.nextLine();
+
+        // Compute even parity bit
+        int count = 0;
+        for (char bit : data.toCharArray()) {
+            if (bit == '1') count++;
+        }
+        String parityBit = (count % 2 == 0) ? "0" : "1";  // Append parity bit
+
+        String dataWithParity = data + parityBit;
+        System.out.println("Data Sent with Parity: " + dataWithParity);
+
+        // Send data to receiver
+        outToServer.writeBytes(dataWithParity + "\n");
+
+        // Close connections
+        scanner.close();
+        outToServer.close();
+        socket.close();
+    }
+}
+
+
+
+
+
+PS C:\Users\Arpita Nath\Desktop\j> javac ParityReceiverServer.java ParitySenderClient.java
+PS C:\Users\Arpita Nath\Desktop\j> java ParityReceiverServer
+Server is running on port 6789
+Client connected...
+Received Data with Parity: 11011
+ Data is UNCORRUPTED
+Client connected...
+Received Data with Parity: 1010110
+ Data is UNCORRUPTED
+
+
+
+PS C:\Users\Arpita Nath\Desktop\j> java ParitySenderClient
+Connected to server on port 6789
+Enter binary data: 101011
+Data Sent with Parity: 1010110
+
+-------------------------------------------------------------------------------------------------------------------
+
+import java.io.*;
+import java.net.*;
+
+public class ParityReceiverS {
+    public static void main(String[] args) throws IOException {
+        int port = 6789;
+        ServerSocket serverSocket = new ServerSocket(port);
+        System.out.println("Server is running on port " + port);
+
+        while (true) {
+            Socket clientSocket = serverSocket.accept();
+            System.out.println("Client connected...");
+
+            BufferedReader inFromClient = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            String receivedData = inFromClient.readLine();
+            
+            if (receivedData == null) continue;
+
+            System.out.println("Received Data with Parity: " + receivedData);
+
+            // Check parity
+            int count = 0;
+            for (char bit : receivedData.toCharArray()) {
+                if (bit == '1') count++;
+            }
+
+            if (count % 2 == 0) {
+                System.out.println(" Data is UNCORRUPTED");
+            } else {
+                System.out.println(" Data is CORRUPTED");
+            }
+
+            // Close client socket
+            clientSocket.close();
+        }
+    }
+}
+
+
+
+
+
+import java.io.*;
+import java.net.*;
+import java.util.Scanner;
+
+public class ParitySenderC {
+    public static void main(String[] args) throws IOException {
+        String serverIP = "localhost"; 
+        int serverPort = 6789;
+
+        Socket socket = new Socket(serverIP, serverPort);
+        System.out.println("Connected to server on port " + serverPort);
+
+        DataOutputStream outToServer = new DataOutputStream(socket.getOutputStream());
+        Scanner scanner = new Scanner(System.in);
+
+        System.out.print("Enter binary data: ");
+        String data = scanner.nextLine();
+
+        // Append '1' to force corruption
+        String dataWithParity = data + "1";
+        System.out.println("Data Sent with Parity: " + dataWithParity);
+
+        // Send data to receiver
+        outToServer.writeBytes(dataWithParity + "\n");
+
+        // Close connections
+        scanner.close();
+        outToServer.close();
+        socket.close();
+    }
+}
+
+
+
+PS C:\Users\Arpita Nath\Desktop\j> javac ParityReceiverS.java ParitySenderC.java          
+PS C:\Users\Arpita Nath\Desktop\j> java ParityReceiverS                         
+Server is running on port 6789
+Client connected...
+Received Data with Parity: 10101
+ Data is CORRUPTED
+PS C:\Users\Arpita Nath\Desktop\j> 
+
+
+PS C:\Users\Arpita Nath\Desktop\j> java ParitySenderC                             
+Connected to server on port 6789
+Enter binary data: 1010
+Data Sent with Parity: 10101
+PS C:\Users\Arpita Nath\Desktop\j> 
